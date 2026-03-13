@@ -20,4 +20,4 @@
 | `checkout.php` | 15 | `$discountValue = $subtotal * ($discountPercent/100);` | **Sửa lỗi logic:** Cập nhật lại công thức tính giá trị giảm giá. |
 | `dashboard.php` | 12 | `$productPrice = $products[$item['sku']]['price'];`<br>`$totalRevenue += ($item['qty'] * $productPrice);` | **Sửa lỗi logic:** Cập nhật biến giá tiền sản phẩm và sửa công thức tính tổng doanh thu (`Tổng tiền = Số lượng * Giá tiền`). |
 | `dashboard.php` | 20 | `if ($product['stock'] <= 5)` | **Sửa lỗi logic:** Cập nhật lại điều kiện kiểm tra sản phẩm gần hết hàng (Số lượng tồn kho `<= 5`). |
-| `orders
+| `orders.php` | 12 | `return $right['id'] <=> $left['id'];` | **Sửa lỗi logic:** Cập nhật toán tử phi thuyền (spaceship operator) để sắp xếp đơn hàng. |
