@@ -1,5 +1,5 @@
 # IntelliJ IDEA
-.idea/
+backend/.idea/
 *.iml
 *.iws
 *.ipr

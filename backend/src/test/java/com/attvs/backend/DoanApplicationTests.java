@@ -1,4 +1,4 @@
-package com.nhom15.doan;
+package com.attvs.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

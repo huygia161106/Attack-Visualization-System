@@ -1,4 +1,4 @@
-package entity;
+package com.attvs.backend.entity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
