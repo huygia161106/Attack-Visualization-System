@@ -8,6 +8,7 @@ import com.attvs.backend.repository.AttackEventRepository;
 
 @RestController
 public class EventController {
+
     private final AttackEventRepository repository;
 
     public EventController(AttackEventRepository repository) {
