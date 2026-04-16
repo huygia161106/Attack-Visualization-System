@@ -1,5 +1,20 @@
 # IntelliJ IDEA
-backend/.idea/
+.idea/
 *.iml
 *.iws
 *.ipr
+out/
+
+# Maven (Cực kỳ quan trọng)
+target/
+backend/target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
