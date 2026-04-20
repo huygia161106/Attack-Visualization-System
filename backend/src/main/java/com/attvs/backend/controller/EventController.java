@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import com.attvs.backend.repository.AttackEventRepository;
 
+//HÀM ĐỂ XỬ LÝ REQUEST
 @RestController
 public class EventController {
 

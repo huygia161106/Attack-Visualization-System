@@ -20,7 +20,7 @@ public class AttackEvent {
     private Integer severity; // 1-5
     private String country; // ISO code
     private String city;
-    private String rawPayload; // Lưu JSON dạng String cho đơn giản
+    private String rawPayload; // JSON dạng String
 
     public void setId(UUID id) {
         this.id = id;

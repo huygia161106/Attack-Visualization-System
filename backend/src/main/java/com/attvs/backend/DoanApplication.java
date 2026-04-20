@@ -7,6 +7,7 @@ import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 
 @SpringBootApplication
 @EnableR2dbcRepositories(basePackages = "com.attvs.backend.repository")
+//CLASS ĐỂ KHỞI ĐỘNG BACKEND
 public class DoanApplication {
 
 	public static void main(String[] args) {

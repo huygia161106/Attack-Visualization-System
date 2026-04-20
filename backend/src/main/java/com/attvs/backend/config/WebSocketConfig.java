@@ -9,6 +9,7 @@ import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAd
 
 import java.util.Map;
 
+//LỚP CẤU HÌNH CHO VIỆC KẾT NỐI VỚI WEBSOCKET
 @Configuration
 public class WebSocketConfig {
 
@@ -21,4 +22,5 @@ public class WebSocketConfig {
     public WebSocketHandlerAdapter handlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
+
 }

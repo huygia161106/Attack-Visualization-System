@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
+//INTERFACE ĐỂ CLASS IMPLEMENTS ĐỂ TƯƠNG TÁC VỚI POSTGRES SQL
 @Repository
 public interface AttackEventRepository extends ReactiveCrudRepository<AttackEvent, UUID> {
 
