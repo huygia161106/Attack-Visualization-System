@@ -20,7 +20,11 @@ public class LiveEventHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         return session.send(
-                sink.asFlux().map(string -> session.textMessage(string))
+                sink.asFlux()
+                        .bufferTimeout(50, java.time.Duration.ofMillis(100))
+
+                        .map(list -> { return session.textMessage(list.toString()); }
+                        )
         );
     }
 

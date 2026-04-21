@@ -14,13 +14,17 @@ import java.util.Map;
 public class WebSocketConfig {
 
     @Bean
+    //BEAN NÀY ĐỂ MAP WEBSOCKET REQUEST SANG CHO LiveEventHandler ĐỂ XỬ LÝ
     public HandlerMapping webSocketMapping(LiveEventHandler liveEventHandler) {
-        return new SimpleUrlHandlerMapping(Map.of("/ws/live", liveEventHandler), 1);
+        return new SimpleUrlHandlerMapping(Map.of("/ws/live", liveEventHandler));
     }
 
+
     @Bean
+    //BEAN NÀY DÙNG ĐỂ CHUYỂN ĐỔI GIỮA HTTP REQUEST THÔNG THƯỜNG SANG WEBSOCKET
     public WebSocketHandlerAdapter handlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
+
 
 }
