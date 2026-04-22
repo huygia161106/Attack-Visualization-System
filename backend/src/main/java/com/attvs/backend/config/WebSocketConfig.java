@@ -3,28 +3,38 @@ package com.attvs.backend.config;
 import com.attvs.backend.handler.LiveEventHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
-//LỚP CẤU HÌNH CHO VIỆC KẾT NỐI VỚI WEBSOCKET
 @Configuration
 public class WebSocketConfig {
 
     @Bean
-    //BEAN NÀY ĐỂ MAP WEBSOCKET REQUEST SANG CHO LiveEventHandler ĐỂ XỬ LÝ
     public HandlerMapping webSocketMapping(LiveEventHandler liveEventHandler) {
-        return new SimpleUrlHandlerMapping(Map.of("/ws/live", liveEventHandler));
+        Map<String, WebSocketHandler> map = new HashMap<>();
+        map.put("/ws/live", liveEventHandler);
+
+        SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
+        handlerMapping.setOrder(1);
+        handlerMapping.setUrlMap(map);
+        
+        // DÒNG NÀY RẤT QUAN TRỌNG: Mở cửa (CORS) cho WebSocket
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.addAllowedOriginPattern("*"); // Cho phép mọi nguồn
+        handlerMapping.setCorsConfigurations(Collections.singletonMap("*", corsConfig));
+        
+        return handlerMapping;
     }
 
-
     @Bean
-    //BEAN NÀY DÙNG ĐỂ CHUYỂN ĐỔI GIỮA HTTP REQUEST THÔNG THƯỜNG SANG WEBSOCKET
     public WebSocketHandlerAdapter handlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
-
-
 }

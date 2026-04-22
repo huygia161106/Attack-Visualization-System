@@ -184,56 +184,47 @@ function renderTimeline() {
     `).join('');
 }
 
-/* RANDOM DATA */
-function randomCoord() {
-    return [
-        Math.random() * 360 - 180,
-        Math.random() * 180 - 90
-    ];
-}
+/* KẾT NỐI WEBSOCKET ĐẾN JAVA BACKEND */
+// Trỏ thẳng đến container backend chạy ở port 8080 trong Docker
+const socket = new WebSocket('ws://localhost:8080/ws/live');
 
-function randomCountry() {
-    const list = ["USA", "China", "Russia", "Germany", "Vietnam", "Brazil"];
-    return list[Math.floor(Math.random() * list.length)];
-}
+socket.onopen = () => {
+    console.log("✅ Đã kết nối tới Java Spring Boot WebSocket Backend");
+};
 
-function randomIP() {
-    return `${rand()}.${rand()}.${rand()}.${rand()}`;
-}
-function rand() { return Math.floor(Math.random()*255); }
+socket.onmessage = function(event) {
+    try {
+        // Parse dữ liệu từ Java gửi sang
+        const realAttack = JSON.parse(event.data);
+        
+        // Gán thời gian hiện tại cho log hiển thị đẹp hơn
+        realAttack.time = new Date().toLocaleTimeString();
 
-function randomType() {
-    const types = ["DDoS", "Malware", "Botnet", "Exploit"];
-    return types[Math.floor(Math.random() * types.length)];
-}
+        // Thêm vào mảng sự kiện
+        attacks.push(realAttack);
 
-function getTime() {
-    return new Date().toLocaleTimeString();
-}
+        // Giữ tối đa 60 sự kiện hiển thị trên bản đồ để chống giật lag (High Event Rate)
+        if (attacks.length > 60) {
+            attacks.shift();
+        }
 
-/* ADD ATTACK */
-function addAttack() {
-    const attack = {
-        from: randomCoord(),
-        to: randomCoord(),
-        ip: randomIP(),
-        type: randomType(),
-        fromCountry: randomCountry(),
-        toCountry: randomCountry(),
-        time: getTime()
-    };
+        // Vẽ lại bản đồ và cập nhật timeline
+        updateChart();
+        renderTimeline();
+    } catch (error) {
+        console.error("❌ Lỗi xử lý dữ liệu từ Backend:", error);
+    }
+};
 
-    attacks.push(attack);
-    if (attacks.length > 60) attacks.shift();
+socket.onclose = () => {
+    console.log("❌ Đã mất kết nối tới Backend");
+};
 
-    updateChart();
-    renderTimeline();
-}
+socket.onerror = (error) => {
+    console.error("❌ Lỗi kết nối WebSocket:", error);
+};
 
-/* LOOP */
-setInterval(addAttack, 1200);
-
-/* CLICK */
+/* CLICK VÀO ĐƯỜNG BAY TRÊN BẢN ĐỒ */
 chart.on('click', function (params) {
     if (params.data && params.data.value) {
         const a = params.data.value;
