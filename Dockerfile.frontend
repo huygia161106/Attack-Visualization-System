@@ -1,0 +1,9 @@
+FROM nginx:alpine
+
+# Copy file frontend.html vào thư mục mặc định của Nginx và đổi tên thành index.html
+COPY frontend.html /usr/share/nginx/html/index.html
+
+# Expose port 80 cho web server
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
