@@ -8,17 +8,25 @@ import reactor.core.publisher.Sinks;
 
 @Component
 public class LiveEventHandler implements WebSocketHandler {
-    
-    // Trạm phát sóng đa luồng (Ai truy cập web cũng nhận được)
-    private final Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
 
-    @Override
-    public Mono<Void> handle(WebSocketSession session) {
-        return session.send(sink.asFlux().map(session::textMessage));
-    }
+    private final Sinks.Many<String> sink = Sinks.many().multicast().directBestEffort();
 
-    // Hàm này để các class khác gọi khi có dữ liệu mới
+    //NHÉT KAFKA MESSAGE VÀO WEBSOCKET
     public void broadcast(String message) {
         sink.tryEmitNext(message);
     }
+
+    // HÀM DUY TRÌ KẾT NỐI WEBSOCKET VỚI FRONTEND
+    @Override
+    public Mono<Void> handle(WebSocketSession session) {
+        return session.send(
+                sink.asFlux()
+                        .bufferTimeout(50, java.time.Duration.ofMillis(100))
+
+                        .map(list -> { return session.textMessage(list.toString()); }
+                        )
+        );
+    }
+
+
 }

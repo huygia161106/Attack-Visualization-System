@@ -104,6 +104,31 @@ const chart = echarts.init(document.getElementById('map'));
 
 let attacks = [];
 
+fetch('http://localhost:8080/api/events/api/events')
+    .then(response => response.json())
+    .then(data => {
+        // Dữ liệu từ DB trả về mới nhất ở đầu, ta reverse để vẽ từ cũ tới mới
+        data.reverse().forEach(event => {
+            if (event.srcLng && event.srcLat) {
+                attacks.push({
+                    time: new Date(event.timestamp).toLocaleTimeString(),
+                    from: [event.srcLng, event.srcLat],
+                    to: [106.8031, 10.8701],
+                    ip: event.srcIp,
+                    type: event.attackType,
+                    fromCountry: event.country || "Unknown",
+                    toCountry: "Vietnam"
+                });
+            }
+        });
+        
+        // Vẽ ngay lập tức
+        updateChart();
+        renderTimeline();
+        console.log("Đã nạp xong lịch sử tấn công từ Database!");
+    })
+    .catch(error => console.error("Lỗi nạp lịch sử:", error));
+
 const option = {
     backgroundColor: 'transparent',
     geo: {
@@ -189,39 +214,43 @@ function renderTimeline() {
 const socket = new WebSocket('ws://localhost:8080/ws/live');
 
 socket.onopen = () => {
-    console.log("✅ Đã kết nối tới Java Spring Boot WebSocket Backend");
+    console.log("Đã kết nối tới Java Spring Boot WebSocket Backend");
 };
 
 socket.onmessage = function(event) {
     try {
-        // Parse dữ liệu từ Java gửi sang
-        const realAttack = JSON.parse(event.data);
+        // 1. Parse dữ liệu (Lúc này realAttacks đang là 1 MẢNG chứa nhiều cuộc tấn công)
+        const attackList = JSON.parse(event.data);
         
-        // Gán thời gian hiện tại cho log hiển thị đẹp hơn
-        realAttack.time = new Date().toLocaleTimeString();
+        // 2. Dùng vòng lặp forEach để bóc tách từng cuộc tấn công ra
+        attackList.forEach(realAttack => {
+            // Gán thời gian hiện tại cho log hiển thị đẹp hơn
+            realAttack.time = new Date().toLocaleTimeString();
 
-        // Thêm vào mảng sự kiện
-        attacks.push(realAttack);
+            // Thêm từng cái một vào mảng sự kiện tổng
+            attacks.push(realAttack);
+        });
 
-        // Giữ tối đa 60 sự kiện hiển thị trên bản đồ để chống giật lag (High Event Rate)
+        // Giữ tối đa 60 sự kiện hiển thị trên bản đồ để chống giật lag
         if (attacks.length > 60) {
-            attacks.shift();
+            // Dùng slice để cắt mảng chuẩn xác hơn shift()
+            attacks = attacks.slice(attacks.length - 60); 
         }
 
         // Vẽ lại bản đồ và cập nhật timeline
         updateChart();
         renderTimeline();
     } catch (error) {
-        console.error("❌ Lỗi xử lý dữ liệu từ Backend:", error);
+        console.error("Lỗi xử lý dữ liệu từ Backend:", error);
     }
 };
 
 socket.onclose = () => {
-    console.log("❌ Đã mất kết nối tới Backend");
+    console.log("Đã mất kết nối tới Backend");
 };
 
 socket.onerror = (error) => {
-    console.error("❌ Lỗi kết nối WebSocket:", error);
+    console.error("Lỗi kết nối WebSocket:", error);
 };
 
 /* CLICK VÀO ĐƯỜNG BAY TRÊN BẢN ĐỒ */

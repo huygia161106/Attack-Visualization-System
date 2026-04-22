@@ -6,11 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
-import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
@@ -18,19 +16,15 @@ public class WebSocketConfig {
 
     @Bean
     public HandlerMapping webSocketMapping(LiveEventHandler liveEventHandler) {
-        Map<String, WebSocketHandler> map = new HashMap<>();
-        map.put("/ws/live", liveEventHandler);
+        SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping(Map.of("/ws/live", liveEventHandler));
+        mapping.setOrder(1); // Đặt độ ưu tiên
 
-        SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
-        handlerMapping.setOrder(1);
-        handlerMapping.setUrlMap(map);
-        
-        // DÒNG NÀY RẤT QUAN TRỌNG: Mở cửa (CORS) cho WebSocket
+        //Mở cửa (CORS) cho phép Frontend từ mọi nơi cắm vào
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.addAllowedOriginPattern("*"); // Cho phép mọi nguồn
-        handlerMapping.setCorsConfigurations(Collections.singletonMap("*", corsConfig));
-        
-        return handlerMapping;
+        corsConfig.addAllowedOriginPattern("*"); 
+        mapping.setCorsConfigurations(Collections.singletonMap("*", corsConfig));
+
+        return mapping;
     }
 
     @Bean
