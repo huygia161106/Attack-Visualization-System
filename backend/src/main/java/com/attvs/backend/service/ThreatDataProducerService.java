@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 @Service
 public class ThreatDataProducerService {
@@ -17,33 +18,44 @@ public class ThreatDataProducerService {
     private final WebClient webClient;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final Random random = new Random();
+    
+    // Tên topic phải khớp chính xác với bên Consumer
     private static final String TOPIC = "attack-events";
+    
+    // Tự sinh loại tấn công vì SANS không trả về field này
+    private final String[] ATTACK_TYPES = {"Port Scan", "DDoS", "SSH Brute-force", "SQL Injection"};
 
     public ThreatDataProducerService(KafkaTemplate<String, String> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
-        this.webClient = WebClient.builder().baseUrl("https://feodotracker.abuse.ch/downloads").build();
+        // Đổi base URL về SANS và thêm User-Agent giả mạo trình duyệt để lách Cloudflare
+        this.webClient = WebClient.builder()
+                .baseUrl("https://isc.sans.edu/api/topips/100?json")
+                .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                .build();
         this.objectMapper = new ObjectMapper();
     }
 
-    @Scheduled(initialDelay = 3000, fixedDelay = 60000)
+    // Nên để 120 giây (2 phút) 1 lần để tránh bị SANS khóa IP
+    @Scheduled(initialDelay = 3000, fixedDelay = 120000)
     public void fetchAndPublish() {
-        System.out.println("[PRODUCER] Đang cào IP thô từ Abuse.ch...");
+        System.out.println("[PRODUCER] Đang cào IP thô từ SANS ISC...");
 
         webClient.get()
-                .uri("/ipblocklist.json")
                 .retrieve()
+                // Bắt buộc phải đọc dưới dạng String thô để lách lỗi "text/json" của SANS
                 .bodyToMono(String.class)
                 .subscribe(responseString -> {
                     try {
                         List<Map<String, Object>> items = objectMapper.readValue(
                                 responseString, new TypeReference<List<Map<String, Object>>>() {}
                         );
-                        System.out.println("[PRODUCER] Lấy được " + items.size() + " IPs. Bắt đầu đẩy vào Kafka...");
+                        System.out.println("[PRODUCER] Lấy được " + items.size() + " IPs từ SANS. Bắt đầu đẩy vào Kafka...");
                         
                         for (Map<String, Object> item : items) {
-                            String ip = (String) item.get("ip_address");
-                            String malware = (String) item.get("malware");
-                            String attackType = (malware != null) ? malware + " Infection" : "Botnet Traffic";
+                            // Cấu trúc của SANS chứa IP trong trường "source"
+                            String ip = (String) item.get("source");
+                            String attackType = ATTACK_TYPES[random.nextInt(ATTACK_TYPES.length)];
 
                             // Đóng gói Data thô (Chưa có tọa độ)
                             Map<String, String> rawData = new HashMap<>();
@@ -55,8 +67,8 @@ public class ThreatDataProducerService {
                             kafkaTemplate.send(TOPIC, payload);
                         }
                     } catch (Exception e) {
-                        System.err.println("[PRODUCER] Lỗi parse JSON: " + e.getMessage());
+                        System.err.println("[PRODUCER] Lỗi parse JSON SANS: " + e.getMessage());
                     }
-                }, error -> System.err.println("[PRODUCER] Lỗi gọi API: " + error.getMessage()));
+                }, error -> System.err.println("[PRODUCER] SANS chặn IP (Lỗi mạng hoặc 522): " + error.getMessage()));
     }
 }
