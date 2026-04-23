@@ -17,7 +17,6 @@ public class ThreatDataProducerService {
     private final WebClient webClient;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
-    // Tên topic phải khớp chính xác với bên Consumer
     private static final String TOPIC = "attack-events";
 
     public ThreatDataProducerService(KafkaTemplate<String, String> kafkaTemplate) {
@@ -26,7 +25,6 @@ public class ThreatDataProducerService {
         this.objectMapper = new ObjectMapper();
     }
 
-    // Bật server 3 giây sau cào luôn, lặp lại mỗi 60 giây
     @Scheduled(initialDelay = 3000, fixedDelay = 60000)
     public void fetchAndPublish() {
         System.out.println("[PRODUCER] Đang cào IP thô từ Abuse.ch...");
