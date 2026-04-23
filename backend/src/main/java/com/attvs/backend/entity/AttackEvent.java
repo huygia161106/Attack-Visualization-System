@@ -1,19 +1,20 @@
 package com.attvs.backend.entity;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.net.InetAddress;
 import java.time.Instant;
 import java.util.UUID;
 
 @Table("attack_events")
-public class AttackEvent {
+public class AttackEvent implements Persistable<UUID> {
     @Id
     private UUID id;
     private Instant timestamp;
-    private InetAddress srcIp;
-    private InetAddress dstIp;
+    private String srcIp;
+    private String dstIp;
     private Double srcLat; // vĩ độ
     private Double srcLng; // kinh độ
     private String attackType; // DDoS, SQLi...
@@ -21,6 +22,15 @@ public class AttackEvent {
     private String country; // ISO code
     private String city;
     private String rawPayload; // JSON dạng String
+
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+    // -----------------------------------------------------------------
 
     public void setId(UUID id) {
         this.id = id;
@@ -58,6 +68,7 @@ public class AttackEvent {
         this.rawPayload = rawPayload;
     }
 
+    @Override
     public UUID getId() {
         return id;
     }
@@ -73,7 +84,6 @@ public class AttackEvent {
     public Double getSrcLng() {
         return srcLng;
     }
-
 
     public String getAttackType() {
         return attackType;
@@ -95,19 +105,19 @@ public class AttackEvent {
         return rawPayload;
     }
 
-    public InetAddress getDstIp() {
+    public String getDstIp() {
         return dstIp;
     }
 
-    public InetAddress getSrcIp() {
+    public String getSrcIp() {
         return srcIp;
     }
 
-    public void setSrcIp(InetAddress srcIp) {
+    public void setSrcIp(String srcIp) {
         this.srcIp = srcIp;
     }
 
-    public void setDstIp(InetAddress dstIp) {
+    public void setDstIp(String dstIp) {
         this.dstIp = dstIp;
     }
 }
