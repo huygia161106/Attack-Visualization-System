@@ -14,8 +14,6 @@ import java.util.UUID;
 @Repository
 public interface AttackEventRepository extends ReactiveCrudRepository<AttackEvent, UUID> {
 
-    //TÌM 100 CUỘC TẤN CÔNG MỚI NHẤT
-    Flux<AttackEvent> findTop100ByOrderByTimestampDesc();
 
     //THỐNG KÊ TOP LOẠI TẤN CÔNG
     @Query("SELECT attack_type as type, COUNT(*) as count FROM attack_events GROUP BY attack_type ORDER BY count DESC")
