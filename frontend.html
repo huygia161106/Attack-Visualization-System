@@ -61,42 +61,17 @@
                 background: #00f0ff11;
             }
 
-            /* RADAR EFFECT */
-            .radar {
-                position: absolute;
-                width: 300px;
-                height: 300px;
-                border: 1px solid #00f0ff33;
-                border-radius: 50%;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                animation: rotate 6s linear infinite;
-            }
+            /* ĐÃ XÓA TOÀN BỘ CSS CỦA RADAR Ở ĐÂY THEO YÊU CẦU CỦA BẠN */
 
-            .radar::after {
-                content: "";
-                position: absolute;
-                width: 50%;
-                height: 50%;
-                background: linear-gradient(90deg, transparent, #00f0ff);
-                top: 0;
-                left: 50%;
-                transform-origin: bottom left;
-            }
-
-            @keyframes rotate {
-                from { transform: translate(-50%, -50%) rotate(0deg); }
-                to { transform: translate(-50%, -50%) rotate(360deg); }
-            }
         </style>
 </head>
 
 <body>
 
 <div id="header">🌐 CYBER THREAT MAP</div>
+<a href="/dashboard" style="position: absolute; top: 15px; left: 300px; color: #fff; background: #00f0ff55; padding: 5px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; z-index: 10;">📊 Mở Dashboard</a>
 <div id="map"></div>
-<div class="radar"></div>
+
 <div id="timeline"></div>
 
 <script>
@@ -113,7 +88,7 @@ const HONEYPOT_LOOKUP = {
     "52.74.12.5":     { name: "Singapore", coords: [103.8198, 1.3521] }
 };
 
-fetch('http://localhost:8080/api/events/api/events')
+fetch('http://localhost:8080/api/events')
     .then(response => response.json())
     .then(data => {
         data.reverse().forEach(event => {
@@ -153,6 +128,17 @@ const option = {
             borderColor: '#00f0ff33'
         },
         emphasis: {
+            // CHỈNH SỬA Ở ĐÂY: Thêm label để hiển thị chữ màu đen và cỡ chữ to duy nhất (16px) khi rê chuột.
+            // Bổ sung thêm nền trắng mờ để chữ màu đen nổi bật hơn trên nền tối của bản đồ.
+            label: {
+                show: true,
+                color: '#000000', 
+                fontSize: 16,     
+                fontWeight: 'bold',
+                backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+                padding: [4, 8],
+                borderRadius: 4
+            },
             itemStyle: {
                 areaColor: '#0b3d5c'
             }

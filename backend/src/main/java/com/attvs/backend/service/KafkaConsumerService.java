@@ -26,15 +26,20 @@ public class KafkaConsumerService {
     private final GeoIPService geoIPService; 
     private final Random random = new Random();
 
-    // DANH SÁCH CÁC TRẠM CẢM BIẾN (HONEYPOTS) - [Kinh độ, Vĩ độ, IP Ảo]
+    // DANH SÁCH 10 TRẠM CẢM BIẾN (HONEYPOTS) - [Kinh độ, Vĩ độ, IP Ảo]
     private final Map<String, Object[]> HONEYPOTS = Map.of(
             "Vietnam", new Object[]{106.8031, 10.8701, "14.225.192.112"},
             "United States", new Object[]{-77.0369, 38.9072, "104.16.12.3"},
             "Germany", new Object[]{8.6821, 50.1109, "3.120.54.2"},
             "Japan", new Object[]{139.6503, 35.6762, "13.230.12.4"},
-            "Singapore", new Object[]{103.8198, 1.3521, "52.74.12.5"}
+            "Singapore", new Object[]{103.8198, 1.3521, "52.74.12.5"},
+            "United Kingdom", new Object[]{-0.1278, 51.5074, "8.18.43.21"},
+            "Australia", new Object[]{151.2093, -33.8688, "139.130.4.5"},
+            "Brazil", new Object[]{-43.1729, -22.9068, "187.12.44.3"},
+            "South Korea", new Object[]{126.9780, 37.5665, "211.23.45.1"},
+            "France", new Object[]{2.3522, 48.8566, "192.99.12.4"}
     );
-
+    
     public KafkaConsumerService(AttackEventRepository repository, LiveEventHandler liveEventHandler, GeoIPService geoIPService) {
         this.repository = repository;
         this.liveEventHandler = liveEventHandler;
@@ -92,6 +97,7 @@ public class KafkaConsumerService {
                 frontendEvent.put("from", new Double[]{lon, lat});
                 frontendEvent.put("to", new Double[]{destLon, destLat});
                 frontendEvent.put("ip", ip);
+                frontendEvent.put("dstIp", destIp); // <-- THÊM DÒNG NÀY ĐỂ TRUYỀN IP ĐÍCH CỤ THỂ XUỐNG FRONTEND
                 frontendEvent.put("type", event.getAttackType());
                 frontendEvent.put("fromCountry", country != null ? country : "Unknown");
                 // THÊM DÒNG NÀY ĐỂ TRUYỀN CITY LÊN WEB:
