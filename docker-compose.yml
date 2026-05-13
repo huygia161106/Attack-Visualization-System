@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: attack_frontend
     ports:
-      - "3000:80" # Truy cập web tại http://localhost
+      - "3000:3000" # Truy cập web tại http://localhost
     depends_on:
       - backend
     networks:

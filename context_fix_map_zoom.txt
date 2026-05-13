@@ -1,3 +1,16 @@
+BỐI CẢNH LỖI VÀ GIẢI PHÁP - CYBER THREAT MAP (ECHARTS)
+
+1. VẤN ĐỀ (ISSUE):
+Khi người dùng thực hiện thao tác Zoom hoặc Kéo thả (Roam) trên bản đồ ECharts, các đường bay (lines effect) và điểm phát sáng (scatter) bị lệch tọa độ so với bản đồ nền. Chúng chỉ trở về đúng vị trí sau khi có dữ liệu mới từ WebSocket (thường là 2 giây) gọi hàm setOption().
+
+2. NGUYÊN NHÂN (ROOT CAUSE):
+ECharts tách biệt lớp đồ họa của bản đồ (geo) và lớp hiệu ứng (lines/effect). Khi di chuyển bản đồ, lớp hiệu ứng vẫn sử dụng tọa độ cũ trong cache để vẽ animation 60fps, dẫn đến hiện tượng trôi lệch.
+
+--------------------------------------------------
+DƯỚI ĐÂY LÀ TOÀN BỘ MÃ NGUỒN TRONG THƯ MỤC /map/
+--------------------------------------------------
+
+FILE 1: /map/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,74 +20,80 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/world.js"></script>
 
-        <style>
-            body {
-                margin: 0;
-                background: radial-gradient(circle at center, #020611, #000);
-                font-family: "Segoe UI", sans-serif;
-                overflow: hidden;
-            }
-
-            /* MAP */
-            #map {
-                width: 100%;
-                height: 100vh;
-            }
-
-            /* HEADER */
-            #header {
-                position: absolute;
-                top: 15px;
-                left: 20px;
-                color: #00f0ff;
-                font-size: 20px;
-                font-weight: bold;
-                text-shadow: 0 0 10px #00f0ff;
-            }
-
-            /* TIMELINE */
-            #timeline {
-                position: absolute;
-                right: 20px;
-                top: 70px;
-                width: 280px;
-                height: 420px;
-                overflow-y: auto;
-                background: rgba(0,0,0,0.6);
-                border: 1px solid #00f0ff33;
-                border-radius: 12px;
-                backdrop-filter: blur(6px);
-                color: #00f0ff;
-                padding: 10px;
-                box-shadow: 0 0 20px #00f0ff33;
-            }
-
-            /* EVENT ITEM */
-            .event {
-                margin-bottom: 10px;
-                padding: 8px;
-                border-bottom: 1px solid #00f0ff22;
-                font-size: 13px;
-                transition: 0.2s;
-            }
-            .event:hover {
-                background: #00f0ff11;
-            }
-
-            /* ĐÃ XÓA TOÀN BỘ CSS CỦA RADAR Ở ĐÂY THEO YÊU CẦU CỦA BẠN */
-
-        </style>
+    <link rel="stylesheet" href="/map/style.css">
 </head>
 
 <body>
 
 <div id="header">🌐 CYBER THREAT MAP</div>
 <a href="/dashboard" style="position: absolute; top: 15px; left: 300px; color: #fff; background: #00f0ff55; padding: 5px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; z-index: 10;">📊 Mở Dashboard</a>
-<div id="map"></div>
 
+<div id="map"></div>
 <div id="timeline"></div>
 
-<script>
+<script src="/map/script.js"></script>
+
+</body>
+</html>
+--------------------------------------------------
+
+FILE 2: /map/style.css
+body {
+    margin: 0;
+    background: radial-gradient(circle at center, #020611, #000);
+    font-family: "Segoe UI", sans-serif;
+    overflow: hidden;
+}
+
+/* MAP */
+#map {
+    width: 100%;
+    height: 100vh;
+}
+
+/* HEADER */
+#header {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    color: #00f0ff;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00f0ff;
+}
+
+/* TIMELINE */
+#timeline {
+    position: absolute;
+    right: 20px;
+    top: 70px;
+    width: 280px;
+    height: 420px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #00f0ff33;
+    border-radius: 12px;
+    backdrop-filter: blur(6px);
+    color: #00f0ff;
+    padding: 10px;
+    box-shadow: 0 0 20px #00f0ff33;
+}
+
+/* EVENT ITEM */
+.event {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-bottom: 1px solid #00f0ff22;
+    font-size: 13px;
+    transition: 0.2s;
+}
+
+.event:hover {
+    background: #00f0ff11;
+}
+--------------------------------------------------
+
+FILE 3: /map/script.js
 const chart = echarts.init(document.getElementById('map'));
 
 let attacks = [];
@@ -85,7 +104,12 @@ const HONEYPOT_LOOKUP = {
     "104.16.12.3":    { name: "United States", coords: [-77.0369, 38.9072] },
     "3.120.54.2":     { name: "Germany", coords: [8.6821, 50.1109] },
     "13.230.12.4":    { name: "Japan", coords: [139.6503, 35.6762] },
-    "52.74.12.5":     { name: "Singapore", coords: [103.8198, 1.3521] }
+    "52.74.12.5":     { name: "Singapore", coords: [103.8198, 1.3521] },
+    "8.18.43.21":     { name: "United Kingdom", coords: [-0.1278, 51.5074] },
+    "139.130.4.5":    { name: "Australia", coords: [151.2093, -33.8688] },
+    "187.12.44.3":    { name: "Brazil", coords: [-43.1729, -22.9068] },
+    "211.23.45.1":    { name: "South Korea", coords: [126.9780, 37.5665] },
+    "192.99.12.4":    { name: "France", coords: [2.3522, 48.8566] }
 };
 
 fetch('http://localhost:8080/api/events')
@@ -123,13 +147,13 @@ const option = {
         map: 'world',
         roam: true,
         zoom: 1.2,
+        top: '15%',
         itemStyle: {
             areaColor: '#072a40',
             borderColor: '#00f0ff33'
         },
         emphasis: {
-            // CHỈNH SỬA Ở ĐÂY: Thêm label để hiển thị chữ màu đen và cỡ chữ to duy nhất (16px) khi rê chuột.
-            // Bổ sung thêm nền trắng mờ để chữ màu đen nổi bật hơn trên nền tối của bản đồ.
+            // Hiển thị chữ màu đen và cỡ chữ to duy nhất (16px) khi rê chuột.
             label: {
                 show: true,
                 color: '#000000', 
@@ -149,6 +173,10 @@ const option = {
 
 chart.setOption(option);
 
+window.addEventListener('resize', function() {
+    chart.resize();
+});
+
 /* UPDATE CHART */
 function updateChart() {
     chart.setOption({
@@ -156,7 +184,8 @@ function updateChart() {
             {
                 type: 'lines',
                 coordinateSystem: 'geo',
-                zlevel: 2,
+                z: 2,
+                animation: false,
                 effect: {
                     show: true,
                     period: 4,
@@ -179,7 +208,8 @@ function updateChart() {
             {
                 type: 'effectScatter',
                 coordinateSystem: 'geo',
-                zlevel: 3,
+                z: 3,
+                animation: false,
                 rippleEffect: {
                     brushType: 'stroke'
                 },
@@ -209,7 +239,6 @@ function renderTimeline() {
 }
 
 /* KẾT NỐI WEBSOCKET ĐẾN JAVA BACKEND */
-// Trỏ thẳng đến container backend chạy ở port 8080 trong Docker
 const socket = new WebSocket('ws://localhost:8080/ws/live');
 
 socket.onopen = () => {
@@ -218,25 +247,18 @@ socket.onopen = () => {
 
 socket.onmessage = function(event) {
     try {
-        // 1. Parse dữ liệu (Lúc này realAttacks đang là 1 MẢNG chứa nhiều cuộc tấn công)
         const attackList = JSON.parse(event.data);
         
-        // 2. Dùng vòng lặp forEach để bóc tách từng cuộc tấn công ra
         attackList.forEach(realAttack => {
-            // Gán thời gian hiện tại cho log hiển thị đẹp hơn
             realAttack.time = new Date().toLocaleTimeString();
-
-            // Thêm từng cái một vào mảng sự kiện tổng
             attacks.push(realAttack);
         });
 
         // Giữ tối đa 60 sự kiện hiển thị trên bản đồ để chống giật lag
         if (attacks.length > 60) {
-            // Dùng slice để cắt mảng chuẩn xác hơn shift()
             attacks = attacks.slice(attacks.length - 60); 
         }
 
-        // Vẽ lại bản đồ và cập nhật timeline
         updateChart();
         renderTimeline();
     } catch (error) {
@@ -266,7 +288,11 @@ chart.on('click', function (params) {
         );
     }
 });
-</script>
 
-</body>
-</html>
+/* ========================================================
+   FIX DỨT ĐIỂM: ÉP VẼ LẠI ĐƯỜNG ĐẠN KHI KÉO/ZOOM BẢN ĐỒ
+======================================================== */
+chart.on('georoam', function () {
+    // Gọi lại hàm vẽ đạn ngay lập tức mỗi khi bản đồ bị xê dịch
+    updateChart();
+});
