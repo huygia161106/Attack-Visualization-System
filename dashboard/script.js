@@ -1,432 +1,206 @@
-const API_BASE_URL = 'http://localhost:8080/api/events';
-const WS_URL = 'ws://localhost:8080/ws/live';
+// Cấu hình URL Cloudflare thống nhất 1 chỗ
+const API_BASE_URL = 'https://ultram-short-repository-gradually.trycloudflare.com/api/events';
+const WS_URL = 'wss://ultram-short-repository-gradually.trycloudflare.com/ws/live';
+// const API_BASE_URL = 'http://localhost:8080/api/events';
+//const WS_URL = 'ws://localhost:8080/ws/live';
 
-let attackChart, activityChart;
-const activityData = { labels: [], values: [] };
-const severityCounts = {1:0, 2:0, 3:0, 4:0, 5:0};
-let totalEvents = 0;
-const seenIPs = new Set();
-let highSevCount = 0;
-const tickerMessages = [];
+const chart = echarts.init(document.getElementById('map'));
 
-// ── Chart: Doughnut ──
-function renderAttackChart(attackTypes) {
-    const ctx = document.getElementById('attackTypeChart').getContext('2d');
-    const labels = attackTypes.map(t => t.type || t.attack_type);
-    const values = attackTypes.map(t => t.count);
+let mapAttacks = []; 
+let logAttacks = []; 
+let eventBuffer = []; 
+let globalStats = { "WORLD": {} }; 
 
-    const bgColors = [
-        '#00d4ff', '#ff2442', '#ffaa00', '#a855f7', '#00ff88', 
-        '#ff6432', '#3b82f6', '#ec4899', '#14b8a6', '#f59e0b'
-    ];
+// THÔNG SỐ TỶ LỆ VÀNG
+const MAX_ACTIVE_LINES = 300; 
+const MAX_LOGS = 50;         
+const ATTACK_LIFETIME = 6000; 
+const RENDER_INTERVAL = 1000; 
 
-    if (attackChart) attackChart.destroy();
-    attackChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: bgColors.slice(0, labels.length),
-                borderWidth: 2,
-                borderColor: '#03060f',
-                hoverBorderColor: '#0a1220',
-                hoverOffset: 4 
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%', 
-            layout: { padding: { right: 20 } },
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { 
-                        color: '#4a6a8a', 
-                        font: { family: 'Share Tech Mono', size: 14 }, 
-                        padding: 15, 
-                        usePointStyle: true, 
-                        boxWidth: 8 
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(7, 13, 26, 0.9)', 
-                    titleColor: '#00d4ff', 
-                    bodyColor: '#e2f0ff', 
-                    borderColor: '#0d2040', 
-                    borderWidth: 1, 
-                    padding: 10,
-                    titleFont: { size: 14 },
-                    bodyFont: { size: 14 },
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) label += ': ';
-                            const total = context.chart._metasets[context.datasetIndex].total;
-                            const value = context.raw;
-                            const percentage = Math.round((value / total) * 100) + '%';
-                            return label + value + ' vụ (' + percentage + ')';
-                        }
-                    }
-                }
+const HONEYPOT_LOOKUP = {
+    "14.225.192.112": { name: "Vietnam", coords: [106.8031, 10.8701] },
+    "104.16.12.3":    { name: "United States", coords: [-77.0369, 38.9072] },
+    "3.120.54.2":     { name: "Germany", coords: [8.6821, 50.1109] },
+    "13.230.12.4":    { name: "Japan", coords: [139.6503, 35.6762] },
+    "52.74.12.5":     { name: "Singapore", coords: [103.8198, 1.3521] },
+    "8.18.43.21":     { name: "United Kingdom", coords: [-0.1278, 51.5074] },
+    "139.130.4.5":    { name: "Australia", coords: [151.2093, -33.8688] },
+    "187.12.44.3":    { name: "Brazil", coords: [-43.1729, -22.9068] },
+    "211.23.45.1":    { name: "South Korea", coords: [126.9780, 37.5665] },
+    "192.99.12.4":    { name: "France", coords: [2.3522, 48.8566] },
+    "198.51.100.1":   { name: "Canada", coords: [-79.3832, 43.6532] },
+    "95.161.2.1":     { name: "Russia", coords: [37.6173, 55.7558] },
+    "114.247.1.1":    { name: "China", coords: [116.4074, 39.9042] }
+};
+
+const countrySelect = document.getElementById('countrySelect');
+if(countrySelect) {
+    const uniqueCountries = [...new Set(Object.values(HONEYPOT_LOOKUP).map(h => h.name))].sort();
+    uniqueCountries.forEach(country => {
+        const opt = document.createElement('option');
+        opt.value = country;
+        opt.innerHTML = country.toUpperCase();
+        countrySelect.appendChild(opt);
+        globalStats[country] = {}; 
+    });
+}
+
+function getColorByType(type) {
+    if (!type) return '#00f0ff'; 
+    const t = type.toLowerCase();
+    if (t.includes('infection') || t.includes('malware') || t.includes('ransomware') || t.includes('zero')) return '#ff3333'; 
+    if (t.includes('ddos') || t.includes('flood') || t.includes('stuffing')) return '#ffaa00'; 
+    if (t.includes('scan') || t.includes('brute') || t.includes('sqli')) return '#00ff66'; 
+    return '#00f0ff'; 
+}
+
+chart.setOption({
+    backgroundColor: 'transparent',
+    geo: {
+        map: 'world', roam: true, zoom: 1.2, scaleLimit: { min: 1.2, max: 8 }, top: '15%',
+        itemStyle: { areaColor: '#0a1d33', borderColor: '#00f0ff33' },
+        emphasis: { label: { show: false }, itemStyle: { areaColor: '#123152' } }
+    },
+    series: []
+});
+
+function updateDashboard() {
+    chart.setOption({
+        series: [
+            {
+                type: 'lines', coordinateSystem: 'geo', zlevel: 1, z: 2, animation: false,
+                effect: { show: true, period: 4, trailLength: 0.4, symbol: 'circle', symbolSize: 3, loop: false },
+                lineStyle: { width: 1.5, opacity: 0, curveness: 0.3 },
+                data: mapAttacks.map(a => a.lineData)
+            },
+            {
+                type: 'effectScatter', coordinateSystem: 'geo', zlevel: 2, z: 3, animation: false,
+                rippleEffect: { brushType: 'stroke', scale: 2.5 }, symbolSize: 4,
+                data: mapAttacks.flatMap(a => [a.scatterSrc, a.scatterDst])
             }
-        }
+        ]
     });
-}
 
-// ── Chart: Activity Line ──
-function initActivityChart() {
-    const ctx = document.getElementById('activityChart').getContext('2d');
-    activityChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: activityData.labels,
-            datasets: [{
-                data: activityData.values,
-                borderColor: '#00d4ff',
-                backgroundColor: 'rgba(0,212,255,0.06)',
-                borderWidth: 2,
-                pointRadius: 3,
-                pointBackgroundColor: '#00d4ff',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-            scales: {
-                x: { 
-                    ticks: { 
-                        color: '#4dd4ff', 
-                        font: { family: 'Share Tech Mono', size: 16, weight: 'bold' },
-                        maxTicksLimit: 12 
-                    }, 
-                    grid: { color: 'rgba(13,32,64,0.8)' } 
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: { 
-                        stepSize: 1, precision: 0, color: '#4dd4ff', 
-                        font: { family: 'Share Tech Mono', size: 16, weight: 'bold' },
-                        callback: function(value) { return Number.isInteger(value) ? value : null; } 
-                    },
-                    grid: { color: 'rgba(13,32,64,0.8)' }
-                }
-            }
-        }
-    });
-}
-
-function pushActivityPoint(count = 1, fixedTime = null) {
-    const t = fixedTime || new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    activityData.labels.push(t);
-    activityData.values.push(count);
-    if (activityData.labels.length > 20) {
-        activityData.labels.shift();
-        activityData.values.shift();
-    }
-    if (activityChart) activityChart.update('none');
-}
-
-// ── Severity bars ──
-function updateSeverityBars() {
-    const max = Math.max(...Object.values(severityCounts), 1);
-    const rows = document.querySelectorAll('.sev-row');
-    const levels = [5,4,3,2,1];
-    rows.forEach((row, i) => {
-        const lvl = levels[i];
-        const cnt = severityCounts[lvl] || 0;
-        const pct = Math.round((cnt / max) * 100);
-        row.querySelector('.sev-fill').style.width = pct + '%';
-        row.querySelector('.sev-count').textContent = cnt;
-    });
-}
-
-function updateStats() {
-    document.getElementById('totalEvents').textContent = totalEvents.toLocaleString('vi-VN');
-    document.getElementById('uniqueIPs').textContent = seenIPs.size.toLocaleString('vi-VN');
-    document.getElementById('highSeverity').textContent = highSevCount.toLocaleString('vi-VN');
-}
-
-// ── API: stats ──
-async function fetchStats() {
-    try {
-        const res = await fetch(`${API_BASE_URL}/stats`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.totalEvents) {
-            totalEvents = data.totalEvents;
-            updateStats();
-        }
-        if (data.attackTypes?.length) renderAttackChart(data.attackTypes);
-    } catch {}
-}
-
-// ── API: top sources (IP) ──
-async function fetchTopSources() {
-    try {
-        const res = await fetch(`${API_BASE_URL}/top-sources`);
-        if (!res.ok) return;
-        let data = await res.json();
+    if(countrySelect) {
+        const selectedCountry = countrySelect.value;
+        const stats = globalStats[selectedCountry] || {};
+        const contentDiv = document.getElementById('stats-content');
         
-        data.sort((a, b) => b.count - a.count);
-        const max = data[0]?.count || 1;
-        
-        const list = document.getElementById('topSourcesList');
-        list.innerHTML = data.slice(0,10).map((item, i) => {
-            const ip = item.dst_ip || item.ip || item.src_ip || 'Unknown';
-            
-            // 🔥 VÁ LỖI: Thu thập IP từ danh sách Top để không bị hiển thị số 0
-            if(ip !== 'Unknown') seenIPs.add(ip);
-
-            const cnt = item.count;
-            const pct = Math.round((cnt / max) * 100);
-            return `
-            <div class="ip-item">
-                <div class="ip-rank">${String(i+1).padStart(2,'0')}</div>
-                <div class="ip-bar-wrap">
-                    <div class="ip-addr">${ip}</div>
-                    <div class="ip-bar-bg"><div class="ip-bar" style="width:${pct}%"></div></div>
-                </div>
-                <div class="ip-count">${cnt}</div>
-            </div>`;
-        }).join('');
-        
-        updateStats(); // Cập nhật lại số sau khi nạp IP
-    } catch {}
-}
-
-// ── API: top countries ──
-async function fetchTopCountries() {
-    try {
-        const res = await fetch(`${API_BASE_URL}/by-country`);
-        if (!res.ok) return;
-        let data = await res.json();
-        
-        data.sort((a, b) => b.count - a.count);
-        const max = data[0]?.count || 1;
-        
-        const list = document.getElementById('topCountryList');
-        list.innerHTML = data.slice(0,10).map((item, i) => {
-            const cname = item.country || item.name || item.id || 'Unknown';
-            const cnt = item.count;
-            const pct = Math.round((cnt / max) * 100);
-            return `
-            <div class="ip-item">
-                <div class="ip-rank">${String(i+1).padStart(2,'0')}</div>
-                <div class="ip-bar-wrap">
-                    <div class="ip-addr" style="color:#00ff88">${cname}</div>
-                    <div class="ip-bar-bg">
-                        <div class="ip-bar" style="width:${pct}%; background: linear-gradient(90deg, #00d4ff, #00ff88);"></div>
+        if (contentDiv) {
+            if (Object.keys(stats).length === 0) {
+                contentDiv.innerHTML = `<div style="text-align:center; color:#555;">Đang chờ dữ liệu...</div>`;
+            } else {
+                const sortedStats = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+                contentDiv.innerHTML = sortedStats.map(([type, count]) => `
+                    <div class="stat-row">
+                        <span class="stat-type" style="color: ${getColorByType(type)}">${type}</span>
+                        <span class="stat-count">${count}</span>
                     </div>
-                </div>
-                <div class="ip-count" style="color:#00ff88">${cnt}</div>
-            </div>`;
-        }).join('');
-    } catch {}
-}
-
-// ── API: latest events ──
-async function fetchLatestEvents() {
-    try {
-        const res = await fetch(API_BASE_URL);
-        if (!res.ok) return;
-        const data = await res.json();
-        
-        Object.keys(severityCounts).forEach(k => severityCounts[k] = 0);
-        highSevCount = 0;
-        tickerMessages.length = 0;
-        
-        const tbody = document.getElementById('eventsTableBody');
-        tbody.innerHTML = data.map((ev, index) => {
-            const time = new Date(ev.timestamp).toLocaleTimeString('vi-VN');
-            const sev = ev.severity || 1;
-            const src = ev.srcIp || 'N/A';
-            
-            // 🔥 VÁ LỖI: Nhặt IP lịch sử bỏ lại vào rổ đếm
-            if(src !== 'N/A') seenIPs.add(src);
-
-            severityCounts[sev]++;
-            if (sev >= 4) highSevCount++;
-            tickerMessages.push(`${time} · ${ev.attackType || 'Unknown'} từ ${src}`);
-            
-            if (index < 20) {
-                pushActivityPoint(Math.floor(Math.random() * 3) + 1, time);
+                `).join('');
             }
-
-            return buildRow(
-                ev.id, 
-                time,
-                src,
-                ev.dstIp || 'N/A',
-                ev.attackType || 'Unknown',
-                `${ev.country||'—'} / ${ev.city||'—'}`,
-                sev
-            );
-        }).join('');
-
-        updateSeverityBars();
-        updateTicker();
-        updateStats();
-
-    } catch {}
-}
-
-// ── Row builder (Hỗ trợ Click thông minh) ──
-function buildRow(id, time, src, dst, type, loc, sev) {
-    let cls = 'badge-med';
-    let label = `MỨC ${sev}`;
-    if (sev >= 5) cls = 'badge-crit';
-    else if (sev >= 4) cls = 'badge-high';
-    
-    let clickAction = '';
-    if (id) {
-        clickAction = `onclick="openEventDetails('${id}')" class="clickable-row" title="Click để xem chi tiết mã độc"`;
-    } else {
-        clickAction = `onclick="alert('Dữ liệu đang được phân tích và mã hóa vào Database, vui lòng đợi vài giây và F5 để xem chi tiết!')" class="clickable-row" title="Dữ liệu đang nạp..." style="opacity: 0.8"`;
+        }
     }
 
-    return `
-    <tr ${clickAction}>
-        <td class="td-time">${time}</td>
-        <td class="td-ip-src">${src}</td>
-        <td class="td-ip-dst">${dst}</td>
-        <td class="td-type">${type}</td>
-        <td class="td-loc">${loc}</td>
-        <td style="text-align:center;"><span class="badge ${cls}">${label}</span></td>
-    </tr>`;
+    const timelineDiv = document.getElementById('timeline');
+    if (timelineDiv) {
+        timelineDiv.innerHTML = logAttacks.slice(-20).reverse().map(a => `
+            <div class="event" style="border-left-color: ${getColorByType(a.type)}">
+                <span class="time">${a.time}</span>
+                <div class="route">${a.fromCountry} ➔ ${a.toCountry}</div>
+                <div class="ip">IP: ${a.ip}</div>
+                <div class="type" style="color: ${getColorByType(a.type)}">${a.type}</div>
+            </div>
+        `).join('');
+    }
 }
 
-// ── API: /api/events/:id ──
-async function openEventDetails(id) {
-    if (!id) return;
+// ── Gọi API lấy dữ liệu chuẩn cho Bảng (ĐÃ FIX CACHE CHỐNG LỆCH) ──
+function syncMapStats() {
+    const t = new Date().getTime();
+    fetch(`${API_BASE_URL}/stats/redis?t=${t}`, { cache: "no-store" })
+        .then(response => response.json())
+        .then(data => {
+            if (data && Object.keys(data).length > 0) {
+                for (const country in data) {
+                    if (!globalStats[country]) globalStats[country] = {};
+                    for (const type in data[country]) {
+                        globalStats[country][type] = parseInt(data[country][type]);
+                    }
+                }
+                updateDashboard(); 
+            }
+        })
+        .catch(error => console.error("Lỗi nạp Redis:", error));
+}
+
+syncMapStats(); 
+setInterval(() => {
+    syncMapStats();
+}, 500);
+
+const socket = new WebSocket(WS_URL);
+
+socket.onmessage = function(event) {
+    // Bỏ if(document.hidden) để chống mất đạn khi chuyển tab
     try {
-        const res = await fetch(`${API_BASE_URL}/${id}`);
-        if (!res.ok) throw new Error('Không tìm thấy dữ liệu từ Backend');
-        const data = await res.json();
+        const attackList = JSON.parse(event.data);
+        eventBuffer.push(...attackList); 
+        // Tránh tràn RAM nếu treo quá lâu
+        if (eventBuffer.length > 200) eventBuffer = eventBuffer.slice(-200);
+    } catch (error) {}
+};
 
-        const formatTime = new Date(data.timestamp).toLocaleString('vi-VN');
+setInterval(() => {
+    if (document.hidden || eventBuffer.length === 0) return;
+
+    const batch = eventBuffer.splice(0, 8); 
+
+    batch.forEach(a => {
+        a.time = new Date().toLocaleTimeString();
+        a.uid = Math.random().toString(36).substr(2, 9);
         
-        document.getElementById('modalContent').innerHTML = `
-            <div class="detail-row">
-                <span class="detail-label">ID:</span> 
-                <span class="detail-val" style="color:var(--text-dim)">${data.id}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">THỜI GIAN PHÁT HIỆN:</span> 
-                <span class="detail-val">${formatTime}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">IP KẺ TẤN CÔNG (SRC):</span> 
-                <span class="detail-val" style="color:var(--accent-red)">${data.srcIp || 'N/A'}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">VỊ TRÍ NGUỒN:</span> 
-                <span class="detail-val">${data.country || 'Unknown'} / ${data.city || 'Unknown'}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">IP ĐÍCH (TARGET):</span> 
-                <span class="detail-val" style="color:var(--accent-cyan)">${data.dstIp || 'N/A'}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">PHÂN LOẠI MÃ ĐỘC:</span> 
-                <span class="detail-val" style="color:var(--accent-amber)">${data.attackType || 'Unknown'}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">MỨC ĐỘ NGHIÊM TRỌNG:</span> 
-                <span class="detail-val">LEVEL ${data.severity || 'N/A'}</span>
-            </div>
-        `;
-        document.getElementById('eventModal').style.display = 'flex';
-    } catch (e) {
-        alert('Lỗi lấy chi tiết sự kiện: ' + e.message);
-    }
-}
+        const dest = a.toCountry;
+        const type = a.type || "Botnet";
+        const color = getColorByType(type);
+        
+        globalStats["WORLD"][type] = (globalStats["WORLD"][type] || 0) + 1;
+        if (globalStats[dest]) {
+            globalStats[dest][type] = (globalStats[dest][type] || 0) + 1;
+        }
 
-function closeModal() {
-    document.getElementById('eventModal').style.display = 'none';
-}
+        a.lineData = { id: 'line_' + a.uid, coords: [a.from, a.to], lineStyle: { color: color } };
+        a.scatterSrc = { id: 'src_' + a.uid, value: [...a.from, 1], itemStyle: { color: color } };
+        a.scatterDst = { id: 'dst_' + a.uid, value: [...a.to, 1], itemStyle: { color: color } };
 
+        logAttacks.push(a);
+        if (logAttacks.length > MAX_LOGS) logAttacks.shift();
 
-function extractEvents(payload) {
-    const out = [];
-    function walk(item) {
-        if (typeof item === 'string') { try { walk(JSON.parse(item)); } catch {} }
-        else if (Array.isArray(item)) item.forEach(walk);
-        else if (item && typeof item === 'object') out.push(item);
-    }
-    walk(payload);
-    return out;
-}
+        mapAttacks.push(a);
+        if (mapAttacks.length > MAX_ACTIVE_LINES) mapAttacks.shift();
 
-// ── WebSocket ──
-function connectWebSocket() {
-    const wsStatus = document.getElementById('wsStatus');
-    const ws = new WebSocket(WS_URL);
+        setTimeout(() => {
+            mapAttacks = mapAttacks.filter(line => line.uid !== a.uid);
+            if (!isRoaming && !document.hidden) updateDashboard();
+        }, ATTACK_LIFETIME);
+    });
 
-    ws.onopen = () => {
-        wsStatus.textContent = '● LIVE · KẾT NỐI';
-        wsStatus.className = 'ws-connected';
-        document.getElementById('systemStatus').textContent = 'ONLINE';
-    };
+    if (!isRoaming) updateDashboard();
 
-    ws.onmessage = (msg) => {
-        try {
-            const events = extractEvents(JSON.parse(msg.data));
-            const tbody = document.getElementById('eventsTableBody');
+}, RENDER_INTERVAL);
 
-            events.forEach(e => {
-                const id = e.id || e.eventId || null; 
-                const src = e.ip || 'N/A';
-                const dst = e.dstIp || 'N/A';
-                const type = e.type || 'Unknown';
-                const loc = `${e.fromCountry||'—'} / ${e.fromCity||'—'}`;
-                const sev = e.severity || Math.floor(Math.random() * 5) + 1;
-                const time = new Date().toLocaleTimeString('vi-VN');
+let isRoaming = false;
+let roamEndTimer = null;
+chart.on('georoam', function() {
+    isRoaming = true;
+    if (roamEndTimer) clearTimeout(roamEndTimer);
+    
+    roamEndTimer = setTimeout(() => {
+        isRoaming = false;
+        roamEndTimer = null;
+        updateDashboard();
+    }, 150);
 
-                totalEvents++;
-                seenIPs.add(src); // WebSocket vẫn tiếp tục nhặt IP mới
-                severityCounts[sev]++;
-                if (sev >= 4) highSevCount++;
+    chart.setOption({ series: [ { type: 'lines', data: [] }, { type: 'effectScatter', data: [] } ] });
+});
 
-                tbody.insertAdjacentHTML('afterbegin', buildRow(id, time, src, dst, type, loc, sev));
-                tickerMessages.push(`${time} · ${type} từ ${src} (${e.fromCountry||'?'})`);
-            });
-
-            while (tbody.children.length > 500) tbody.removeChild(tbody.lastChild);
-
-            pushActivityPoint(events.length);
-            updateStats();
-            updateSeverityBars();
-            updateTicker();
-            
-            fetchStats();
-            fetchTopSources();
-            fetchTopCountries(); 
-
-        } catch (err) { console.error('WS parse error', err); }
-    };
-
-    ws.onclose = () => {
-        wsStatus.textContent = '● MẤT KẾT NỐI · THỬ LẠI...';
-        wsStatus.className = 'ws-disconnected';
-        setTimeout(connectWebSocket, 5000);
-    };
-}
-
-// ── Ticker ──
-function updateTicker() {
-    if (tickerMessages.length < 2) return;
-    const msg = tickerMessages.slice(-12).join(' &nbsp;·&nbsp; ');
-    const doubled = msg + ' &nbsp;·&nbsp; ' + msg;
-    document.getElementById('tickerContent').innerHTML = doubled;
-}
-
-// ── Boot ──
-initActivityChart();
-fetchStats();
-fetchTopSources();
-fetchTopCountries(); 
-fetchLatestEvents();
-connectWebSocket();
+window.addEventListener('resize', () => chart.resize());
