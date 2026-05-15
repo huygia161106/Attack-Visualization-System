@@ -15,7 +15,6 @@ function renderAttackChart(attackTypes) {
     const labels = attackTypes.map(t => t.type || t.attack_type);
     const values = attackTypes.map(t => t.count);
 
-    // Mảng màu lớn hơn, đảm bảo không trùng lặp cho nhiều loại tấn công
     const bgColors = [
         '#00d4ff', '#ff2442', '#ffaa00', '#a855f7', '#00ff88', 
         '#ff6432', '#3b82f6', '#ec4899', '#14b8a6', '#f59e0b'
@@ -28,7 +27,7 @@ function renderAttackChart(attackTypes) {
             labels,
             datasets: [{
                 data: values,
-                backgroundColor: bgColors.slice(0, labels.length), // Cắt mảng màu dựa trên số lượng labels
+                backgroundColor: bgColors.slice(0, labels.length),
                 borderWidth: 2,
                 borderColor: '#03060f',
                 hoverBorderColor: '#0a1220',
@@ -39,14 +38,13 @@ function renderAttackChart(attackTypes) {
             responsive: true,
             maintainAspectRatio: false,
             cutout: '75%', 
-            layout: { padding: { right: 20 } }, // Thêm padding bên phải để lấy chỗ cho legend
+            layout: { padding: { right: 20 } },
             plugins: {
                 legend: {
-                    position: 'right', // Chuyển legend sang bên phải
+                    position: 'right',
                     labels: { 
                         color: '#4a6a8a', 
-                        // [FONT-SIZE: Biểu đồ tròn chú thích]
-                        font: { family: 'Share Tech Mono', size: 14 }, // Tăng từ 11 lên 14
+                        font: { family: 'Share Tech Mono', size: 14 }, 
                         padding: 15, 
                         usePointStyle: true, 
                         boxWidth: 8 
@@ -59,7 +57,6 @@ function renderAttackChart(attackTypes) {
                     borderColor: '#0d2040', 
                     borderWidth: 1, 
                     padding: 10,
-                    // [FONT-SIZE: Tooltip biểu đồ tròn]
                     titleFont: { size: 14 },
                     bodyFont: { size: 14 },
                     callbacks: {
@@ -78,7 +75,7 @@ function renderAttackChart(attackTypes) {
     });
 }
 
-// ── Chart: Activity Line (Đã tăng kích thước chữ dễ đọc) ──
+// ── Chart: Activity Line ──
 function initActivityChart() {
     const ctx = document.getElementById('activityChart').getContext('2d');
     activityChart = new Chart(ctx, {
@@ -102,8 +99,7 @@ function initActivityChart() {
                 x: { 
                     ticks: { 
                         color: '#4dd4ff', 
-                        // [FONT-SIZE: Bảng hoạt động theo thời gian (Trục X)]
-                        font: { family: 'Share Tech Mono', size: 16, weight: 'bold' }, // Tăng từ 13 lên 16
+                        font: { family: 'Share Tech Mono', size: 16, weight: 'bold' },
                         maxTicksLimit: 12 
                     }, 
                     grid: { color: 'rgba(13,32,64,0.8)' } 
@@ -112,8 +108,7 @@ function initActivityChart() {
                     beginAtZero: true,
                     ticks: { 
                         stepSize: 1, precision: 0, color: '#4dd4ff', 
-                        // [FONT-SIZE: Bảng hoạt động theo thời gian (Trục Y)]
-                        font: { family: 'Share Tech Mono', size: 16, weight: 'bold' }, // Tăng từ 13 lên 16
+                        font: { family: 'Share Tech Mono', size: 16, weight: 'bold' },
                         callback: function(value) { return Number.isInteger(value) ? value : null; } 
                     },
                     grid: { color: 'rgba(13,32,64,0.8)' }
@@ -181,6 +176,10 @@ async function fetchTopSources() {
         const list = document.getElementById('topSourcesList');
         list.innerHTML = data.slice(0,10).map((item, i) => {
             const ip = item.dst_ip || item.ip || item.src_ip || 'Unknown';
+            
+            // 🔥 VÁ LỖI: Thu thập IP từ danh sách Top để không bị hiển thị số 0
+            if(ip !== 'Unknown') seenIPs.add(ip);
+
             const cnt = item.count;
             const pct = Math.round((cnt / max) * 100);
             return `
@@ -193,6 +192,8 @@ async function fetchTopSources() {
                 <div class="ip-count">${cnt}</div>
             </div>`;
         }).join('');
+        
+        updateStats(); // Cập nhật lại số sau khi nạp IP
     } catch {}
 }
 
@@ -241,10 +242,14 @@ async function fetchLatestEvents() {
         tbody.innerHTML = data.map((ev, index) => {
             const time = new Date(ev.timestamp).toLocaleTimeString('vi-VN');
             const sev = ev.severity || 1;
+            const src = ev.srcIp || 'N/A';
             
+            // 🔥 VÁ LỖI: Nhặt IP lịch sử bỏ lại vào rổ đếm
+            if(src !== 'N/A') seenIPs.add(src);
+
             severityCounts[sev]++;
             if (sev >= 4) highSevCount++;
-            tickerMessages.push(`${time} · ${ev.attackType || 'Unknown'} từ ${ev.srcIp || 'N/A'}`);
+            tickerMessages.push(`${time} · ${ev.attackType || 'Unknown'} từ ${src}`);
             
             if (index < 20) {
                 pushActivityPoint(Math.floor(Math.random() * 3) + 1, time);
@@ -253,7 +258,7 @@ async function fetchLatestEvents() {
             return buildRow(
                 ev.id, 
                 time,
-                ev.srcIp || 'N/A',
+                src,
                 ev.dstIp || 'N/A',
                 ev.attackType || 'Unknown',
                 `${ev.country||'—'} / ${ev.city||'—'}`,
@@ -293,7 +298,7 @@ function buildRow(id, time, src, dst, type, loc, sev) {
     </tr>`;
 }
 
-// ── TÍNH NĂNG MỚI API: /api/events/:id ──
+// ── API: /api/events/:id ──
 async function openEventDetails(id) {
     if (!id) return;
     try {
@@ -381,7 +386,7 @@ function connectWebSocket() {
                 const time = new Date().toLocaleTimeString('vi-VN');
 
                 totalEvents++;
-                seenIPs.add(src);
+                seenIPs.add(src); // WebSocket vẫn tiếp tục nhặt IP mới
                 severityCounts[sev]++;
                 if (sev >= 4) highSevCount++;
 
@@ -389,7 +394,6 @@ function connectWebSocket() {
                 tickerMessages.push(`${time} · ${type} từ ${src} (${e.fromCountry||'?'})`);
             });
 
-            // TĂNG KHẢ NĂNG LƯU TRỮ LOG CŨ TỪ 100 LÊN 500 SỰ KIỆN (Giúp cuộn xem được nhiều hơn)
             while (tbody.children.length > 500) tbody.removeChild(tbody.lastChild);
 
             pushActivityPoint(events.length);

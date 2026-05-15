@@ -23,6 +23,8 @@ public class KafkaConsumerService {
     private final ObjectMapper objectMapper;
     private final LiveEventHandler liveEventHandler;
     
+    private final RedisService redisService;
+
     private final GeoIPService geoIPService; 
     private final Random random = new Random();
 
@@ -83,10 +85,11 @@ public class KafkaConsumerService {
             Map.entry("Canada - Vancouver", new Object[]{-123.1207, 49.2827, "199.60.1.1"})
     );
     
-    public KafkaConsumerService(AttackEventRepository repository, LiveEventHandler liveEventHandler, GeoIPService geoIPService) {
+    public KafkaConsumerService(AttackEventRepository repository, LiveEventHandler liveEventHandler, GeoIPService geoIPService, RedisService redisService) {
         this.repository = repository;
         this.liveEventHandler = liveEventHandler;
         this.geoIPService = geoIPService;
+        this.redisService = redisService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -134,7 +137,13 @@ public class KafkaConsumerService {
                         .doOnSuccess(savedEvent -> {
                             // Khi vào được đây, nghĩa là Database đã Commit thành công 100%
                             System.out.println("ĐÃ LƯU DB: " + savedEvent.getSrcIp() + " -> " + destIp);
-                            
+                            // ============================================
+                            // UPDATE REDIS REAL-TIME TẠI ĐÂY
+                            // Tăng đếm cho Toàn cầu (WORLD)
+                            redisService.incrementAttackCount("WORLD", savedEvent.getAttackType());
+                            // Tăng đếm riêng cho Quốc gia đích
+                            redisService.incrementAttackCount(targetCountry, savedEvent.getAttackType());
+                            // ============================================
                             try {
                                 // TIẾN HÀNH BẮN SỰ KIỆN LÊN WEBSOCKET 
                                 Map<String, Object> frontendEvent = new HashMap<>();
