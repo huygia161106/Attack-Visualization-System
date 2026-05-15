@@ -2,22 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cyber Threat Map</title>
-
+    <title>Global Cyber Threat Intelligence</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/world.js"></script>
-
     <link rel="stylesheet" href="/map/style.css">
 </head>
-
 <body>
 
-<div id="header">🌐 CYBER THREAT MAP</div>
-<a href="/dashboard" style="position: absolute; top: 15px; left: 300px; color: #fff; background: #00f0ff55; padding: 5px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; z-index: 10;">📊 Mở Dashboard</a>
+    <!-- Header -->
+    <div id="header">
+        <div class="title">🌐 GLOBAL THREAT MAP</div>
+        <a href="/dashboard" class="btn-dashboard">📊 Mở Dashboard</a>
+    </div>
 
-<div id="map"></div>
+    <div id="main-container">
+        
+        <!-- BẢNG THỐNG KÊ GÓC TRÁI (KASPERSKY STYLE) -->
+        <div id="stats-panel">
+            <div class="panel-header">
+                <select id="countrySelect" onchange="updateDashboard()">
+                    <option value="WORLD">🌍 TOÀN CẦU (WORLD)</option>
+                    <!-- JS sẽ tự đổ danh sách các nước vào đây -->
+                </select>
+            </div>
+            <div class="panel-body">
+                <div class="stat-row title-row">
+                    <span>LOẠI MÃ ĐỘC</span>
+                    <span>SỐ LƯỢNG</span>
+                </div>
+                <div id="stats-content">
+                    <div style="text-align:center; color:#555;">Đang chờ dữ liệu...</div>
+                </div>
+            </div>
+        </div>
 
-<script src="/map/script.js"></script>
+        <!-- Khu vực Bản đồ -->
+        <div id="map"></div>
 
+        <!-- Sidebar Timeline bên phải -->
+        <div id="sidebar">
+            <div class="sidebar-title">⚡ LIVE ATTACK FEED</div>
+            <div id="timeline"></div>
+        </div>
+
+    </div>
+
+    <script src="/map/script.js"></script>
 </body>
 </html>

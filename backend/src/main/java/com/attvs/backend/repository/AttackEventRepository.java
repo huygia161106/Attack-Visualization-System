@@ -2,12 +2,14 @@ package com.attvs.backend.repository;
 
 import com.attvs.backend.entity.AttackEvent;
 import com.attvs.backend.entity.StatResponse;
+import org.springframework.data.r2dbc.repository.Modifying;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Repository
@@ -28,4 +30,9 @@ public interface AttackEventRepository extends ReactiveCrudRepository<AttackEven
     Flux<StatResponse> getStatsByCountry();
 
     Mono<Long> count();
+
+    // XÓA SỰ KIỆN CŨ HƠN 24 GIỜ (DÙNG CHO LÀM SẠCH DB, KHÔNG PHẢI CHO FRONTEND)
+    @Modifying
+    @Query("DELETE FROM attack_events WHERE timestamp < :cutoffTime")
+    Mono<Integer> deleteOldEvents(Instant cutoffTime);
 }
