@@ -1,5 +1,10 @@
-const API_BASE_URL = 'http://localhost:8080/api/events';
-const WS_URL = 'ws://localhost:8080/ws/live';
+// 1. CẤU HÌNH URL CLOUDFLARE (Nhớ cập nhật link mới từ Terminal hầm 8080)
+const API_BASE_URL = 'https://ultram-short-repository-gradually.trycloudflare.com/api/events';
+const WS_URL = 'wss://ultram-short-repository-gradually.trycloudflare.com/ws/live';
+// const API_BASE_URL = 'http://localhost:8080/api/events';
+//const WS_URL = 'ws://localhost:8080/ws/live';
+
+
 
 let attackChart, activityChart;
 const activityData = { labels: [], values: [] };
