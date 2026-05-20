@@ -103,7 +103,7 @@ public class ThreatDataProducerService {
             eventCount = random.nextInt(11) + 20; 
         } else {
             // BÌNH THƯỜNG: Sinh ngẫu nhiên từ 1 đến 3 cuộc tấn công
-            eventCount = random.nextInt(3) + 1; 
+            eventCount = random.nextInt(3) + 1;
         }
 
         for (int i = 0; i < eventCount; i++) {
