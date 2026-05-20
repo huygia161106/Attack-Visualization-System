@@ -23,7 +23,9 @@ services:
     networks:
       - cyber-network
 
-
+  # 3. Kafka (Sử dụng chuẩn KRaft mới, không cần Zookeeper)
+  # 3. Kafka (Sử dụng chuẩn KRaft mới, không cần Zookeeper)
+  # 3. Kafka (Sử dụng Image Chính Chủ của Apache, chuẩn KRaft)
   kafka:
     image: apache/kafka:3.7.0
     container_name: attack_kafka
@@ -55,7 +57,6 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # Nối thư mục MaxMind từ máy bạn vào container theo đúng đường dẫn trong GeoIPService.java
       - ./Database/GeoLite2-City:/app/geoip
     depends_on:
       - db
@@ -71,7 +72,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: attack_frontend
     ports:
-      - "3000:3000" # Truy cập web tại http://localhost
+      - "3000:3000"
     depends_on:
       - backend
     networks:
