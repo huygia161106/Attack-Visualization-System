@@ -23,7 +23,9 @@ services:
     networks:
       - cyber-network
 
-  # 3. Kafka 
+  # 3. Kafka (Sử dụng chuẩn KRaft mới, không cần Zookeeper)
+  # 3. Kafka (Sử dụng chuẩn KRaft mới, không cần Zookeeper)
+  # 3. Kafka (Sử dụng Image Chính Chủ của Apache, chuẩn KRaft)
   kafka:
     image: apache/kafka:3.7.0
     container_name: attack_kafka
