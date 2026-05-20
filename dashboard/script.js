@@ -293,7 +293,6 @@ fetchStats();
 fetchTopSources();
 fetchTopCountries(); 
 fetchLatestEvents();
-<<<<<<< HEAD
 
 // Kết nối luồng Live
 connectWebSocket();
@@ -306,5 +305,4 @@ setInterval(() => {
 }, API_REFRESH_INTERVAL);
 
 console.info('✅ Cyber Threat Dashboard v3.0 Ready - Optimized Polling Engine');
-=======
 connectWebSocket();
