@@ -421,14 +421,9 @@ function processAttackEvent(rawEvt) {
   totalAttacks++; 
   typeCounts[type] = (typeCounts[type] || 0) + 1;
   
-  if (!countryStats[targetCountry]) countryStats[targetCountry] = { total: 0, types: {} };
-  countryStats[targetCountry].total++;
-  countryStats[targetCountry].types[type] = (countryStats[targetCountry].types[type] || 0) + 1;
-
   // Render ra UI
   updateStatCounters(); 
   updateTopAttackBottomLeft();
-  updateKasperskyPanel(); 
   pushFeedEntry(evt, type, colors, rawEvt);
 }
 
@@ -568,6 +563,9 @@ const pushFeedEntry = (evt, type, colors, rawEvt) => {
 async function fetchInitialStatsForMap() {
   try {
     const t = new Date().getTime();
+    for (const key in countryStats) delete countryStats[key];
+    for (const key in typeCounts) delete typeCounts[key];
+    totalAttacks = 0;
     
     // 1. Fetch Global Stats
     const resStats = await fetch(`${API_BASE_URL}/stats?t=${t}`, { cache: "no-store" });
@@ -657,3 +655,14 @@ function connectWebSocket() {
 // ── BOOT SEQUENCE ──
 fetchInitialStatsForMap();
 connectWebSocket();
+
+// 🔥 THÊM ĐOẠN NÀY VÀO CUỐI FILE
+// Đồng bộ số liệu Bảng Kaspersky với Redis mỗi 5 giây
+setInterval(() => {
+    // Lưu ý: Cần điều chỉnh nhẹ hàm fetchInitialStatsForMap để reset countryStats trước khi nạp lại
+    // Tránh bị cộng dồn chồng chéo dữ liệu cũ và mới
+    for (const key in countryStats) delete countryStats[key]; 
+    for (const key in typeCounts) delete typeCounts[key];
+    
+    fetchInitialStatsForMap();
+}, 5000);
