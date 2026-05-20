@@ -1,5 +1,15 @@
+/**
+ * ============================================================================
+ * CYBER THREAT DASHBOARD — CORE ENGINE (v3.0 Production Ready)
+ * Architecture: REST API Data Sync & WebSocket Real-time UI Updates
+ * ============================================================================
+ */
+
+/* ── 1. SYSTEM CONFIGURATION & STATE ─────────────────────────────────────── */
 const API_BASE_URL = 'http://localhost:8080/api/events';
 const WS_URL = 'ws://localhost:8080/ws/live';
+const API_REFRESH_INTERVAL = 5000; // Làm mới bảng xếp hạng 5 giây/lần
+const MAX_TABLE_ROWS       = 500;  // Giới hạn chống tràn RAM
 
 let attackChart, activityChart;
 const activityData   = { labels: [], values: [] };
@@ -304,4 +314,3 @@ setInterval(() => {
     fetchTopCountries();
 }, API_REFRESH_INTERVAL);
 
-connectWebSocket();
