@@ -1,0 +1,14 @@
+spring.r2dbc.url=r2dbc:postgresql://localhost:5432/attack_db
+
+spring.r2dbc.username=postgres
+
+spring.r2dbc.password=12345
+
+# --- C?U HÌNH REDIS ---
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+
+# --- C?U HÌNH KAFKA ---
+spring.kafka.bootstrap-servers=localhost:9092
+spring.kafka.consumer.group-id=attack-group
+spring.kafka.consumer.auto-offset-reset=earliest

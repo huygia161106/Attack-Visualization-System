@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Threat Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/style.css">
+</head>
+<body>
+
+<div class="wrapper">
+
+    <header class="header">
+        <div class="logo-group">
+            <div class="title-block">
+                <h1>CYBER THREAT DASHBOARD</h1>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE FEED
+            </div>
+            <a href="/map" class="map-btn">Bản Đồ</a>
+        </div>
+    </header>
+
+    <div class="stats-row">
+        <div class="stat-card red">
+            <div class="stat-label">Tổng số tấn công</div>
+            <div class="stat-value" id="totalEvents">0</div>
+            <div class="stat-sub">Phát hiện toàn hệ thống</div>
+            <div class="stat-corner">⚠</div>
+        </div>
+        <div class="stat-card cyan">
+            <div class="stat-label">Nguồn IP độc hại</div>
+            <div class="stat-value" id="uniqueIPs">—</div>
+            <div class="stat-sub">IP riêng biệt</div>
+            <div class="stat-corner">⊛</div>
+        </div>
+        <div class="stat-card amber">
+            <div class="stat-label">Mức độ cao (4-5)</div>
+            <div class="stat-value" id="highSeverity">—</div>
+            <div class="stat-sub">Cần xử lý ngay</div>
+            <div class="stat-corner">◈</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">Trạng thái hệ thống</div>
+            <div class="stat-value" style="font-size:1.5rem; padding-top:4px;" id="systemStatus">ONLINE</div>
+            <div class="stat-corner">✦</div>
+        </div>
+    </div>
+
+    <!-- MAIN GRID MỚI: Cột 1 chứa 2 bảng, Cột 2 & 3 chứa Top List -->
+    <div class="main-grid">
+        <div class="col-left">
+            <!-- Bảng 1: Phân loại tấn công -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title"><span class="icon">◈</span> Phân loại tấn công</div>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="attackTypeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bảng 2: Mức độ nghiêm trọng được đưa lên gộp chung -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title"><span class="icon">▣</span> Phân bổ mức độ nghiêm trọng</div>
+                </div>
+                <div class="sev-bars" id="severityBars">
+                    <div class="sev-row sev-5">
+                        <div class="sev-label">MỨC 5</div>
+                        <div class="sev-track"><div class="sev-fill" style="width:70%"></div></div>
+                        <div class="sev-count">—</div>
+                    </div>
+                    <div class="sev-row sev-4">
+                        <div class="sev-label">MỨC 4</div>
+                        <div class="sev-track"><div class="sev-fill" style="width:50%"></div></div>
+                        <div class="sev-count">—</div>
+                    </div>
+                    <div class="sev-row sev-3">
+                        <div class="sev-label">MỨC 3</div>
+                        <div class="sev-track"><div class="sev-fill" style="width:35%"></div></div>
+                        <div class="sev-count">—</div>
+                    </div>
+                    <div class="sev-row sev-2">
+                        <div class="sev-label">MỨC 2</div>
+                        <div class="sev-track"><div class="sev-fill" style="width:20%"></div></div>
+                        <div class="sev-count">—</div>
+                    </div>
+                    <div class="sev-row sev-1">
+                        <div class="sev-label">MỨC 1</div>
+                        <div class="sev-track"><div class="sev-fill" style="width:10%"></div></div>
+                        <div class="sev-count">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title"><span class="icon">⊛</span> Top 10 IP bị tấn công</div>
+            </div>
+            <div class="ip-list" id="topSourcesList"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title"><span class="icon">🌍</span> Top 10 Quốc gia bị tấn công</div>
+            </div>
+            <div class="ip-list" id="topCountryList"></div>
+        </div>
+    </div>
+
+    <!-- PANEL MỚI: Biểu đồ thời gian to, rộng, tràn viền -->
+    <div class="panel" style="margin-bottom: 20px;">
+        <div class="panel-header">
+            <div class="panel-title"><span class="icon">📈</span> Tần suất hoạt động theo thời gian</div>
+        </div>
+        <div class="timeline-wrap-large">
+            <canvas id="activityChart"></canvas>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title"><span class="icon">▶</span> Luồng sự kiện thời gian thực (Click để xem chi tiết)</div>
+            <span id="wsStatus" class="ws-connecting">● ĐANG KẾT NỐI...</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Thời gian</th>
+                        <th>IP Nguồn</th>
+                        <th>IP Đích</th>
+                        <th>Loại tấn công</th>
+                        <th>Quốc gia / Thành phố</th>
+                        <th style="text-align:center;">Mức độ</th>
+                    </tr>
+                </thead>
+                <tbody id="eventsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="ticker-bar" style="margin-top: 20px;">
+        <span class="ticker-label">ALERT</span>
+        <div style="overflow:hidden; flex:1;">
+            <div class="ticker-content" id="tickerContent">
+                Hệ thống đang giám sát... &nbsp;·&nbsp; Đang chờ kết nối WebSocket... &nbsp;·&nbsp;
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="eventModal">
+    <div class="modal-box">
+        <div class="modal-close" onclick="closeModal()">✕</div>
+        <div class="modal-header">TÌM KIẾM CHI TIẾT SỰ KIỆN</div>
+        <div class="modal-content" id="modalContent">
+            </div>
+    </div>
+</div>
+
+<script src="/dashboard/script.js"></script>
+</body>
+</html>
