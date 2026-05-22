@@ -1,7 +1,7 @@
 package com.attvs.backend.controller;
 
 import com.attvs.backend.entity.AttackEvent;
-import com.attvs.backend.entity.StatResponse; // Import thêm DTO này
+import com.attvs.backend.entity.StatResponse;
 import com.attvs.backend.repository.AttackEventRepository;
 import com.attvs.backend.service.RedisService;
 
@@ -26,34 +26,40 @@ public class EventController {
         this.redisService = redisService;
     }
 
-    // Đổi thành chuỗi rỗng để gọi chuẩn: localhost:8080/api/events
     @GetMapping("")
     public Flux<AttackEvent> get100LatestEvents() {
         return repository.findTop100ByOrderByTimestampDesc();
     }
 
-    // Đổi Map thành StatResponse
+    // Đã sửa lỗi đánh máy StatRespoGia Huynse -> StatResponse
     @GetMapping("/top-sources")
     public Flux<StatResponse> getTop10Sources(){
         return repository.getTopSources(10);
     }
 
+    // 🔥 CẬP NHẬT LỚN: Tối ưu WebFlux (Mono.zip) và trả về thêm totalUniqueIps
     @GetMapping("/stats")
     public Mono<Map<String,Object>> getStatus(){
-        return repository.count()
-                         .flatMap(total -> repository.getAttackTypeStats()
-                                                           .collectList()
-                                                           .map(types -> {
-                                                               HashMap<String,Object> result = new HashMap<>();
-                                                               result.put("totalEvents",total);
-                                                               result.put("attackTypes",types); // Types giờ là List<StatResponse>
-                                                               return result;
-                                                           }
-                         )
-        );
+        // 1. Chạy 5 luồng truy vấn song song siêu tốc độ
+        Mono<Long> totalEventsMono = repository.count();
+        Mono<Long> uniqueIpsMono = repository.countUniqueSourceIps();
+        Mono<java.util.List<StatResponse>> attackTypesMono = repository.getAttackTypeStats().collectList();
+        Mono<Long> highSevMono = repository.countHighSeverity();
+        Mono<java.util.List<StatResponse>> severityStatsMono = repository.getSeverityStats().collectList();
+
+        // 2. Gộp 5 kết quả lại trả về cho giao diện
+        return Mono.zip(totalEventsMono, uniqueIpsMono, attackTypesMono, highSevMono, severityStatsMono)
+            .map(tuple -> {
+                HashMap<String,Object> result = new HashMap<>();
+                result.put("totalEvents", tuple.getT1());
+                result.put("totalUniqueIps", tuple.getT2());
+                result.put("attackTypes", tuple.getT3());
+                result.put("highSeverityCount", tuple.getT4()); // Dữ liệu mới
+                result.put("severityDistribution", tuple.getT5()); // Dữ liệu mới
+                return result;
+            });
     }
 
-    // Đổi Map thành StatResponse
     @GetMapping("/by-country")
     public Flux<StatResponse> getByCountry(){
         return repository.getStatsByCountry();
@@ -66,7 +72,6 @@ public class EventController {
 
     @GetMapping("/stats/redis")
     public Mono<Map<String, Map<Object, Object>>> getGlobalStatsFromRedis() {
-        // Gọi RedisService lấy tất cả thống kê và trả về cho Frontend
         return Mono.just(redisService.getAllGlobalStats());
     }
 }
