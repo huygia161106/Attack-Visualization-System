@@ -1,20 +1,29 @@
-# IntelliJ IDEA
+# IDE
 .idea/
+.vscode/
 *.iml
 *.iws
 *.ipr
 out/
 
-# Maven (Cực kỳ quan trọng)
+# Build output
 target/
 backend/target/
-.mvn/
-mvnw
-mvnw.cmd
+build/
+dist/
 
-# Hệ điều hành
+# Local configuration and generated files
+.env
+.env.*
+*.bak
+*.tmp
+*.log
+
+# Archives and extracted setup packages
+*.rar
+*.zip
+*.7z
+
+# OS files
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
