@@ -6,8 +6,8 @@
  */
 
 /* ── 1. SYSTEM CONFIGURATION ─────────────────────────────────────────────── */
-const API_BASE_URL  = 'http://localhost:8080/api/events';
-const WS_URL        = 'ws://localhost:8080/ws/live';
+const API_BASE_URL  = 'https://strong-bulk-olive-text.trycloudflare.com/api/events';
+const WS_URL        = 'wss://strong-bulk-olive-text.trycloudflare.com/ws/live';
 
 const WS_RETRY_MS   = 3000;
 const MAX_FEED_ROWS = 8;

@@ -31,8 +31,20 @@ public interface AttackEventRepository extends ReactiveCrudRepository<AttackEven
 
     Mono<Long> count();
 
+    // 🔥 CẬP NHẬT MỚI: Đếm tổng số IP nguồn (độc hại) duy nhất từ trước đến nay
+    @Query("SELECT COUNT(DISTINCT src_ip) FROM attack_events")
+    Mono<Long> countUniqueSourceIps();
+
     // XÓA SỰ KIỆN CŨ HƠN 24 GIỜ (DÙNG CHO LÀM SẠCH DB, KHÔNG PHẢI CHO FRONTEND)
     @Modifying
     @Query("DELETE FROM attack_events WHERE timestamp < :cutoffTime")
     Mono<Integer> deleteOldEvents(Instant cutoffTime);
+
+    // Đếm phân bố 5 mức độ nghiêm trọng
+    @Query("SELECT CAST(severity AS VARCHAR) as type, COUNT(*) as count FROM attack_events GROUP BY severity")
+    Flux<StatResponse> getSeverityStats();
+
+    // Đếm tổng số cuộc tấn công mức độ cao (Level 4 & 5)
+    @Query("SELECT COUNT(*) FROM attack_events WHERE severity >= 4")
+    Mono<Long> countHighSeverity();
 }

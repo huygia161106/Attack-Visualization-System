@@ -6,8 +6,9 @@
  */
 
 /* ── 1. SYSTEM CONFIGURATION & STATE ─────────────────────────────────────── */
-const API_BASE_URL = 'http://localhost:8080/api/events';
-const WS_URL = 'ws://localhost:8080/ws/live';
+const API_BASE_URL  = 'https://strong-bulk-olive-text.trycloudflare.com/api/events';
+const WS_URL        = 'wss://strong-bulk-olive-text.trycloudflare.com/ws/live';
+
 const API_REFRESH_INTERVAL = 5000; // Làm mới bảng xếp hạng 5 giây/lần
 const MAX_TABLE_ROWS       = 500;  // Giới hạn chống tràn RAM
 
@@ -111,8 +112,8 @@ function updateSeverityBars() {
 }
 
 function updateStats() {
+    // 🔥 ĐIỀU CHỈNH: Bỏ ghi đè uniqueIPs ở đây để tránh bị reset về mốc 110
     document.getElementById('totalEvents').textContent = totalEvents.toLocaleString('vi-VN');
-    document.getElementById('uniqueIPs').textContent = seenIPs.size.toLocaleString('vi-VN');
     document.getElementById('highSeverity').textContent = highSevCount.toLocaleString('vi-VN');
 }
 
@@ -141,7 +142,27 @@ async function fetchStats() {
         const res = await fetch(`${API_BASE_URL}/stats`);
         if (!res.ok) return;
         const data = await res.json();
-        if (data.totalEvents) { totalEvents = data.totalEvents; updateStats(); }
+        
+        if (data.totalEvents) totalEvents = data.totalEvents;
+        
+        const trueUniqueIpsCount = data.totalUniqueIps || seenIPs.size;
+        document.getElementById('uniqueIPs').textContent = trueUniqueIpsCount.toLocaleString('vi-VN');
+        
+        if (data.highSeverityCount !== undefined) {
+            highSevCount = data.highSeverityCount;
+        }
+
+        if (data.severityDistribution) {
+            // Đặt lại đếm RAM về 0 trước khi nạp số mới từ DB
+            Object.keys(severityCounts).forEach(k => severityCounts[k] = 0);
+            data.severityDistribution.forEach(item => {
+                severityCounts[item.type] = item.count;
+            });
+            updateSeverityBars();
+        }
+        
+        updateStats();
+
         if (data.attackTypes?.length) renderAttackChart(data.attackTypes);
     } catch (e) { console.warn('Fetch Stats failed'); }
 }
@@ -164,7 +185,7 @@ async function fetchTopSources() {
                     <div class="ip-bar-bg"><div class="ip-bar" style="width:${pct}%"></div></div></div>
                     <div class="ip-count">${item.count}</div></div>`;
         }).join('');
-        updateStats();
+        // Không gọi lại updateStats ở đây để tránh nhiễu
     } catch (e) { console.warn('Fetch Top Sources failed'); }
 }
 
@@ -203,20 +224,18 @@ async function fetchLatestEvents() {
         if (!res.ok) return;
         const data = await res.json();
         
-        Object.keys(severityCounts).forEach(k => severityCounts[k] = 0);
-        highSevCount = 0; tickerMessages.length = 0;
+        tickerMessages.length = 0;
         
         document.getElementById('eventsTableBody').innerHTML = data.map((ev) => {
             const time = new Date(ev.timestamp).toLocaleTimeString('vi-VN');
             const sev = ev.severity || 1;
             const src = ev.srcIp || 'N/A';
-            if (src !== 'N/A') seenIPs.add(src);
-            severityCounts[sev]++; if (sev >= 4) highSevCount++;
+            if (src !== 'N/A') seenIPs.add(src);            
             tickerMessages.push(`${time} · ${ev.attackType || 'Unknown'} từ ${src}`);
             return buildRow(ev.id, time, src, ev.dstIp || 'N/A', ev.attackType || 'Unknown', `${ev.country||'—'} / ${ev.city||'—'}`, sev);
         }).join('');
 
-        updateSeverityBars(); updateTicker(); updateStats();
+        updateTicker(); 
     } catch (e) { console.warn('Fetch Latest Events failed'); }
 }
 
@@ -313,4 +332,3 @@ setInterval(() => {
     fetchTopSources();
     fetchTopCountries();
 }, API_REFRESH_INTERVAL);
-
